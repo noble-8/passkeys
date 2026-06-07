@@ -14,6 +14,7 @@ interface PasskeyRecord {
 interface AuthenticationData {
   credentialId: string;
   challenge: string;
+  clientDataJSON?: string;
   authenticatorData: string;
   signature: string;
 }
@@ -25,6 +26,7 @@ export function PasskeyAuthentication() {
   const [error, setError] = useState('');
   const [authData, setAuthData] = useState<AuthenticationData | null>(null);
   const [success, setSuccess] = useState(false);
+  const [messageToSign, setMessageToSign] = useState('');
 
   useEffect(() => {
     loadPasskeys();
@@ -48,7 +50,7 @@ export function PasskeyAuthentication() {
     setLoading(true);
 
     try {
-      const auth = await authenticatePasskey(credentialId);
+      const auth = await authenticatePasskey(credentialId, messageToSign);
       setAuthData(auth);
       setSuccess(true);
     } catch (err: any) {
@@ -83,9 +85,25 @@ export function PasskeyAuthentication() {
           <p className="text-sm mt-2">Register a passkey above to get started.</p>
         </div>
       ) : (
-        <div className="space-y-3">
-          <p className="text-sm text-gray-600 mb-4">
-            Select a passkey to authenticate:
+        <div className="space-y-4">
+          <div className="mb-4">
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Message to Sign (Optional)
+            </label>
+            <input
+              type="text"
+              value={messageToSign}
+              onChange={(e) => setMessageToSign(e.target.value)}
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              placeholder="Leave blank for random challenge"
+            />
+            <p className="text-xs text-gray-500 mt-1">
+              This message acts as the WebAuthn challenge. The authenticator will sign over its hash during authentication.
+            </p>
+          </div>
+
+          <p className="text-sm text-gray-600 mb-2">
+            Select a passkey to authenticate and sign the message:
           </p>
           {passkeys.map((passkey, index) => (
             <button
@@ -126,10 +144,31 @@ export function PasskeyAuthentication() {
 
           <div className="space-y-3">
             <div className="p-4 bg-gray-50 border border-gray-200 rounded-lg">
-              <h3 className="text-sm font-semibold text-gray-700 mb-2">Challenge (Random)</h3>
+              <h3 className="text-sm font-semibold text-gray-700 mb-2">Challenge</h3>
               <code className="text-xs text-gray-600 break-all block bg-white p-2 rounded border border-gray-200">
                 {authData.challenge}
               </code>
+            </div>
+
+            <div className="p-4 bg-gray-50 border border-gray-200 rounded-lg">
+              <h3 className="text-sm font-semibold text-gray-700 mb-2">Client Data JSON (Contains Challenge)</h3>
+              <code className="text-xs text-gray-600 break-all block bg-white p-2 rounded border border-gray-200">
+                {authData.clientDataJSON}
+              </code>
+              <div className="mt-2 text-xs text-gray-500">
+                {authData.clientDataJSON ? (
+                   <pre className="whitespace-pre-wrap overflow-x-auto bg-gray-100 p-2 rounded border border-gray-300 mt-1">
+                     {(() => {
+                       try {
+                         const decodedStr = atob(authData.clientDataJSON.replace(/-/g, '+').replace(/_/g, '/'));
+                         return JSON.stringify(JSON.parse(decodedStr), null, 2);
+                       } catch {
+                         return "Loading...";
+                       }
+                     })()}
+                   </pre>
+                 ) : null}
+              </div>
             </div>
 
             <div className="p-4 bg-gray-50 border border-gray-200 rounded-lg">

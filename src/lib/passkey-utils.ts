@@ -78,8 +78,21 @@ export async function registerPasskey(username: string, userId: string) {
   }
 }
 
-export async function authenticatePasskey(credentialId: string) {
-  const challenge = generateRandomChallenge();
+export async function authenticatePasskey(credentialId: string, customMessage?: string) {
+  let challenge: Uint8Array;
+  if (customMessage) {
+    const encoder = new TextEncoder();
+    const encoded = encoder.encode(customMessage);
+    // Ensure challenge is at least 16 bytes for some strict authenticators
+    if (encoded.length < 16) {
+      challenge = new Uint8Array(16);
+      challenge.set(encoded);
+    } else {
+      challenge = encoded;
+    }
+  } else {
+    challenge = generateRandomChallenge();
+  }
 
   const publicKeyCredentialRequestOptions: PublicKeyCredentialRequestOptions = {
     challenge,
@@ -105,6 +118,7 @@ export async function authenticatePasskey(credentialId: string) {
   return {
     credentialId: base64urlEncode(credential.rawId),
     challenge: base64urlEncode(challenge),
+    clientDataJSON: base64urlEncode(response.clientDataJSON),
     authenticatorData: base64urlEncode(response.authenticatorData),
     signature: base64urlEncode(response.signature),
     userHandle: response.userHandle ? base64urlEncode(response.userHandle) : null,

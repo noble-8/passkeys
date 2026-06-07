@@ -10,12 +10,36 @@ A modern React application demonstrating Web Authentication API (WebAuthn) for p
 - ✅ **Passkey Authentication** - Authenticate using registered passkeys
 - ✅ **Local Storage** - All data stored locally in browser (no database required)
 - ✅ **Modern UI** - Clean, responsive interface built with React and Tailwind CSS
-- ✅ **Security Demo** - Encryption/decryption demonstration using public keys
+- ✅ **Security Demo** - Cryptographic signature generation and verification demonstration
 - ✅ **Cross-Platform** - Works on desktop and mobile devices
 
 ## How It Works
 
 ### 🔐 Passkey Registration Process
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor User
+    participant UI as PasskeyRegistration.tsx
+    participant Utils as passkey-utils.ts
+    participant WebAuthn as navigator.credentials.create()
+    participant Device as Authenticator (Secure Enclave)
+
+    User->>UI: Enter Username
+    UI->>Utils: registerPasskey(username, userId)
+    Utils->>Utils: Generate random 32-byte challenge
+    Utils->>WebAuthn: Request credential creation with options
+    WebAuthn->>Device: Prompt for biometrics/PIN
+    Device->>User: Request verification (Touch ID / Face ID)
+    User->>Device: Verify identity
+    Device->>Device: Generate new Key Pair
+    Device-->>WebAuthn: Return Public Key & Credential ID
+    WebAuthn-->>Utils: Credential payload
+    Utils-->>UI: Return credentialId, publicKey, challenge, transports
+    UI->>UI: Save username & credentialId to localStorage
+    UI->>User: Show success status & cryptographic details
+```
 
 #### Step 1: User Input
 - User enters a **username** and optional **device name**
@@ -67,6 +91,29 @@ storedPasskeys.push({
 ```
 
 ### 🛡️ Passkey Authentication Process
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor User
+    participant UI as PasskeyAuthentication.tsx
+    participant Utils as passkey-utils.ts
+    participant WebAuthn as navigator.credentials.get()
+    participant Device as Authenticator (Secure Enclave)
+
+    User->>UI: Select registered passkey
+    UI->>Utils: authenticatePasskey(credentialId, customMessage)
+    Utils->>Utils: Generate challenge (or use custom message)
+    Utils->>WebAuthn: Request assertion with options & credentialId
+    WebAuthn->>Device: Prompt for verification
+    Device->>User: Request verification (Touch ID / Face ID)
+    User->>Device: Verify identity
+    Device->>Device: Sign challenge using private key
+    Device-->>WebAuthn: Return signature & authenticatorData
+    WebAuthn-->>Utils: Assertion payload
+    Utils-->>UI: Return credentialId, signature, authenticatorData, challenge
+    UI->>User: Show success status, signature, & decoded ClientDataJSON
+```
 
 #### Step 1: Load Available Passkeys
 - App reads from `localStorage` to get registered passkeys
@@ -212,7 +259,7 @@ src/
 - Handles passkey creation
 - Manages user input and form validation
 - Stores passkey data in localStorage
-- Includes encryption demo
+- Displays registration parameters including challenge, public key, and credential ID
 
 ### PasskeyAuthentication
 - Lists available passkeys

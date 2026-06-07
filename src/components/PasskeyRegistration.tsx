@@ -16,8 +16,7 @@ export function PasskeyRegistration() {
   const [error, setError] = useState('');
   const [passkeyData, setPasskeyData] = useState<PasskeyData | null>(null);
   const [success, setSuccess] = useState(false);
-  const [testMessage, setTestMessage] = useState('Hello, Passkeys!');
-  const [encryptedMessage, setEncryptedMessage] = useState('');
+
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -169,102 +168,7 @@ export function PasskeyRegistration() {
             )}
           </div>
 
-          {/* Encryption/Decryption Demo */}
-          <div className="mt-6 p-4 bg-purple-50 border border-purple-200 rounded-lg">
-            <h3 className="text-lg font-semibold text-purple-900 mb-4">🔐 Encryption Demo</h3>
-            <p className="text-sm text-purple-700 mb-4">
-              This demonstrates a simple encryption using the public key data. WebAuthn keys are typically used for authentication signatures rather than encryption. This is just a demo of how the public key data can be used.
-            </p>
-            
-            <div className="space-y-3">
-              <div>
-                <label className="block text-sm font-medium text-purple-900 mb-1">
-                  Message to Encrypt
-                </label>
-                <input
-                  type="text"
-                  value={testMessage}
-                  onChange={(e) => setTestMessage(e.target.value)}
-                  className="w-full px-3 py-2 border border-purple-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                  placeholder="Enter a message..."
-                />
-              </div>
 
-              <button
-                onClick={async () => {
-                  try {
-                    // Convert public key from base64url to ArrayBuffer
-                    const publicKeyData = Uint8Array.from(atob(passkeyData.publicKey.replace(/-/g, '+').replace(/_/g, '/')), c => c.charCodeAt(0));
-                    
-                    // Try to determine the key type and import accordingly
-                    let publicKey;
-                    try {
-                      // First try ECDSA (most common for WebAuthn)
-                      publicKey = await crypto.subtle.importKey(
-                        'spki',
-                        publicKeyData,
-                        {
-                          name: 'ECDSA',
-                          namedCurve: 'P-256',
-                        },
-                        false,
-                        ['verify']
-                      );
-                    } catch (ecdsaError) {
-                      // If ECDSA fails, try RSA
-                      publicKey = await crypto.subtle.importKey(
-                        'spki',
-                        publicKeyData,
-                        {
-                          name: 'RSA-OAEP',
-                          hash: 'SHA-256',
-                        },
-                        false,
-                        ['encrypt']
-                      );
-                    }
-
-                    // For demonstration purposes, we'll create a simple hash-based "encryption"
-                    // since ECDSA keys can't be used for encryption directly
-                    const encoder = new TextEncoder();
-                    const messageData = encoder.encode(testMessage);
-                    const publicKeyHash = await crypto.subtle.digest('SHA-256', publicKeyData);
-                    
-                    // Create a simple XOR-based demonstration
-                    const keyBytes = new Uint8Array(publicKeyHash.slice(0, 16)); // Use first 16 bytes
-                    const encrypted = new Uint8Array(messageData.length);
-                    for (let i = 0; i < messageData.length; i++) {
-                      encrypted[i] = messageData[i] ^ keyBytes[i % keyBytes.length];
-                    }
-
-                    // Convert to base64 for display
-                    const encryptedBase64 = btoa(String.fromCharCode(...encrypted));
-                    setEncryptedMessage(encryptedBase64);
-                  } catch (err: any) {
-                    console.error('Encryption error:', err);
-                    setError('Encryption failed: ' + err.message);
-                  }
-                }}
-                className="w-full bg-purple-600 text-white py-2 px-4 rounded-lg hover:bg-purple-700 transition-colors"
-              >
-                🔒 Encrypt Message
-              </button>
-
-              {encryptedMessage && (
-                <div>
-                  <label className="block text-sm font-medium text-purple-900 mb-1">
-                    Encrypted Result
-                  </label>
-                  <code className="block text-xs text-purple-700 bg-white p-3 rounded border border-purple-300 break-all">
-                    {encryptedMessage}
-                  </code>
-                  <p className="text-xs text-purple-600 mt-2">
-                    ✓ Data encrypted using public key data. This is a demonstration - WebAuthn keys are primarily used for authentication signatures.
-                  </p>
-                </div>
-              )}
-            </div>
-          </div>
         </div>
       )}
     </div>
